@@ -1,0 +1,60 @@
+{
+  "run_utc": "2026-08-28T06:45:34.081739+00:00",
+  "sources": {
+    "SPY": {
+      "source": "yahoo_adjusted",
+      "rows": 5951,
+      "first": "2003-01-02",
+      "last": "2026-08-27"
+    },
+    "QQQ": {
+      "source": "yahoo_adjusted",
+      "rows": 5951,
+      "first": "2003-01-02",
+      "last": "2026-08-27"
+    },
+    "IWM": {
+      "source": "yahoo_adjusted",
+      "rows": 5951,
+      "first": "2003-01-02",
+      "last": "2026-08-27"
+    },
+    "EFA": {
+      "source": "yahoo_adjusted",
+      "rows": 5951,
+      "first": "2003-01-02",
+      "last": "2026-08-27"
+    },
+    "EEM": {
+      "source": "yahoo_adjusted",
+      "rows": 5881,
+      "first": "2003-04-14",
+      "last": "2026-08-27"
+    },
+    "TLT": {
+      "source": "yahoo_adjusted",
+      "rows": 5951,
+      "first": "2003-01-02",
+      "last": "2026-08-27"
+    },
+    "IEF": {
+      "source": "yahoo_adjusted",
+      "rows": 5951,
+      "first": "2003-01-02",
+      "last": "2026-08-27"
+    },
+    "GLD": {
+      "source": "yahoo_adjusted",
+      "rows": 5477,
+      "first": "2004-11-18",
+      "last": "2026-08-27"
+    },
+    "BIL": {
+      "source": "yahoo_adjusted",
+      "rows": 4843,
+      "first": "2007-05-30",
+      "last": "2026-08-27"
+    }
+  },
+  "errors": {}
+}

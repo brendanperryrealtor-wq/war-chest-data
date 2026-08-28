@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-08-28T07:15:00Z",
+  "as_of": "2026-08-28T08:40:00Z",
   "phase": "research",
   "account": {
     "funded": false,
@@ -15,8 +15,8 @@
     {
       "ticker": "ALL",
       "model": "S1-1.0",
-      "why": "Full 9-ETF universe under backtest; paper signals begin after the engine build",
-      "trigger": "First Sunday drop after the backtest"
+      "why": "Paper-only tracking of the failed-promotion spec to build the live-vs-model record",
+      "trigger": "Sunday drops"
     }
   ],
   "tournament": [
@@ -24,15 +24,15 @@
       "model": "B0-1.0",
       "label": "Control (broad market)",
       "status": "awaiting funding",
-      "note": "Holds the capital once the brokerage is funded",
+      "note": "Holds the capital once the brokerage is funded. Retained custody after S1 failed promotion.",
       "paper_return_pct": null,
       "vs_b0_pct": null
     },
     {
       "model": "S1-1.0",
       "label": "Regime Rotation",
-      "status": "backtest pending",
-      "note": "Spec frozen; 12-combination grid runs next",
+      "status": "failed promotion (paper only)",
+      "note": "Grid run Aug 28: cut crash depth in both windows (-21%, -12% vs market -55%, -34%) but missed the validation return bar (7.8% vs 15.5% CAGR after costs). Holdout sealed. Full tables: project doc s1-grid-results.",
       "paper_return_pct": null,
       "vs_b0_pct": null
     },
@@ -57,8 +57,8 @@
   "ledgers_history": [],
   "memo": {
     "date": "2026-08-28",
-    "headline": "V3.1 Accord adopted; data plane live; S1 engine build is next",
-    "do_not": "Do not fund any strategy before it passes its gates",
+    "headline": "S1-1.0 failed its validation promotion bar; B0 keeps custody; Sunday paper drops continue",
+    "do_not": "Do not switch to the 6-1 momentum variant because validation liked it; that is selection bias",
     "url": ""
   },
   "scoreboard": [
@@ -71,10 +71,15 @@
       "date": "2026-08-28",
       "value": 500,
       "note": "V3.1 Accord adopted; data plane live"
+    },
+    {
+      "date": "2026-08-28",
+      "value": 500,
+      "note": "S1-1.0 grid published: failed promotion; B0 retains custody; holdout sealed"
     }
   ],
   "next": {
     "decision_day": "Monday",
-    "note": "Backtest grid, then brokerage funding"
+    "note": "Fund the brokerage; first tap buys B0. Sunday paper continues."
   }
 }

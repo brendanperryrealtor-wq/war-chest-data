@@ -1,0 +1,80 @@
+{
+  "as_of": "2026-08-28T07:15:00Z",
+  "phase": "research",
+  "account": {
+    "funded": false,
+    "value": 0,
+    "since_start_pct": 0,
+    "high_water": 0,
+    "drawdown_pct": 0,
+    "risk_multiplier": 1
+  },
+  "positions": [],
+  "orders_pending": [],
+  "watching": [
+    {
+      "ticker": "ALL",
+      "model": "S1-1.0",
+      "why": "Full 9-ETF universe under backtest; paper signals begin after the engine build",
+      "trigger": "First Sunday drop after the backtest"
+    }
+  ],
+  "tournament": [
+    {
+      "model": "B0-1.0",
+      "label": "Control (broad market)",
+      "status": "awaiting funding",
+      "note": "Holds the capital once the brokerage is funded",
+      "paper_return_pct": null,
+      "vs_b0_pct": null
+    },
+    {
+      "model": "S1-1.0",
+      "label": "Regime Rotation",
+      "status": "backtest pending",
+      "note": "Spec frozen; 12-combination grid runs next",
+      "paper_return_pct": null,
+      "vs_b0_pct": null
+    },
+    {
+      "model": "S2-0.1",
+      "label": "Compounders",
+      "status": "spec only",
+      "note": "Blocked: no free point-in-time fundamentals; forward archive building",
+      "paper_return_pct": null,
+      "vs_b0_pct": null
+    },
+    {
+      "model": "S3-0.1",
+      "label": "Earnings Momentum",
+      "status": "paper pending",
+      "note": "Enters forward paper once the earnings archive runs",
+      "paper_return_pct": null,
+      "vs_b0_pct": null
+    }
+  ],
+  "trades_log": [],
+  "ledgers_history": [],
+  "memo": {
+    "date": "2026-08-28",
+    "headline": "V3.1 Accord adopted; data plane live; S1 engine build is next",
+    "do_not": "Do not fund any strategy before it passes its gates",
+    "url": ""
+  },
+  "scoreboard": [
+    {
+      "date": "2026-08-28",
+      "value": 500,
+      "note": "Protocol adopted (v1)"
+    },
+    {
+      "date": "2026-08-28",
+      "value": 500,
+      "note": "V3.1 Accord adopted; data plane live"
+    }
+  ],
+  "next": {
+    "decision_day": "Monday",
+    "note": "Backtest grid, then brokerage funding"
+  }
+}

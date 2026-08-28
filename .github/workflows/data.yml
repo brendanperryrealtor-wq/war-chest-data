@@ -1,0 +1,35 @@
+name: war-chest-data
+# Nightly EOD data fetch for the War Chest Protocol.
+# Runs after each US trading day plus a manual "Run workflow" button.
+
+on:
+  schedule:
+    - cron: "30 2 * * 2-6" # 02:30 UTC Tue-Sat = evenings after US close Mon-Fri
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install --quiet yfinance pandas
+
+      - name: Fetch EOD data
+        run: python fetch_data.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "war-chest-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "EOD data $(date -u +%F)"
+          git push

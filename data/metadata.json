@@ -1,59 +1,59 @@
 {
-  "run_utc": "2026-08-28T06:45:34.081739+00:00",
+  "run_utc": "2026-08-29T02:35:11.234871+00:00",
   "sources": {
     "SPY": {
       "source": "yahoo_adjusted",
-      "rows": 5951,
+      "rows": 5952,
       "first": "2003-01-02",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     },
     "QQQ": {
       "source": "yahoo_adjusted",
-      "rows": 5951,
+      "rows": 5952,
       "first": "2003-01-02",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     },
     "IWM": {
       "source": "yahoo_adjusted",
-      "rows": 5951,
+      "rows": 5952,
       "first": "2003-01-02",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     },
     "EFA": {
       "source": "yahoo_adjusted",
-      "rows": 5951,
+      "rows": 5952,
       "first": "2003-01-02",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     },
     "EEM": {
       "source": "yahoo_adjusted",
-      "rows": 5881,
+      "rows": 5882,
       "first": "2003-04-14",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     },
     "TLT": {
       "source": "yahoo_adjusted",
-      "rows": 5951,
+      "rows": 5952,
       "first": "2003-01-02",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     },
     "IEF": {
       "source": "yahoo_adjusted",
-      "rows": 5951,
+      "rows": 5952,
       "first": "2003-01-02",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     },
     "GLD": {
       "source": "yahoo_adjusted",
-      "rows": 5477,
+      "rows": 5478,
       "first": "2004-11-18",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     },
     "BIL": {
       "source": "yahoo_adjusted",
-      "rows": 4843,
+      "rows": 4844,
       "first": "2007-05-30",
-      "last": "2026-08-27"
+      "last": "2026-08-28"
     }
   },
   "errors": {}

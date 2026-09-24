@@ -1,42 +1,60 @@
 {
-  "run_utc": "2026-09-23T02:39:52.459859+00:00",
-  "sources": {},
-  "errors": {
-    "SPY": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ],
-    "QQQ": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ],
-    "IWM": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ],
-    "EFA": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ],
-    "EEM": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ],
-    "TLT": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ],
-    "IEF": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ],
-    "GLD": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ],
-    "BIL": [
-      "from_yahoo: AssertionError: non-positive prices",
-      "from_stooq: RuntimeError: stooq returned no usable csv"
-    ]
-  }
+  "run_utc": "2026-09-24T02:40:10.597224+00:00",
+  "sources": {
+    "SPY": {
+      "source": "yahoo_adjusted",
+      "rows": 5969,
+      "first": "2003-01-02",
+      "last": "2026-09-23"
+    },
+    "QQQ": {
+      "source": "yahoo_adjusted",
+      "rows": 5969,
+      "first": "2003-01-02",
+      "last": "2026-09-23"
+    },
+    "IWM": {
+      "source": "yahoo_adjusted",
+      "rows": 5969,
+      "first": "2003-01-02",
+      "last": "2026-09-23"
+    },
+    "EFA": {
+      "source": "yahoo_adjusted",
+      "rows": 5968,
+      "first": "2003-01-02",
+      "last": "2026-09-23"
+    },
+    "EEM": {
+      "source": "yahoo_adjusted",
+      "rows": 5898,
+      "first": "2003-04-14",
+      "last": "2026-09-23"
+    },
+    "TLT": {
+      "source": "yahoo_adjusted",
+      "rows": 5969,
+      "first": "2003-01-02",
+      "last": "2026-09-23"
+    },
+    "IEF": {
+      "source": "yahoo_adjusted",
+      "rows": 5968,
+      "first": "2003-01-02",
+      "last": "2026-09-23"
+    },
+    "GLD": {
+      "source": "yahoo_adjusted",
+      "rows": 5495,
+      "first": "2004-11-18",
+      "last": "2026-09-23"
+    },
+    "BIL": {
+      "source": "yahoo_adjusted",
+      "rows": 4861,
+      "first": "2007-05-30",
+      "last": "2026-09-23"
+    }
+  },
+  "errors": {}
 }

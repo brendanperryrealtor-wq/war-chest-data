@@ -107,3 +107,61 @@ def test_every_cron_in_the_workflow_maps_to_a_job():
     yml = (Path(__file__).resolve().parent.parent / ".github/workflows/sim.yml").read_text()
     crons = re.findall(r'cron:\s*"([^"]+)"', yml)
     assert crons and all(c in SCHEDULE_TO_JOB for c in crons), crons
+
+
+class PaperishBroker:
+    """A stand-in for an Alpaca paper account with a preset balance (for capital-cap tests)."""
+
+    def __init__(self, cash, price_fn):
+        from sim.broker import DryRunBroker
+        self.inner = DryRunBroker({"cash": cash, "positions": {}, "orders": {}}, price_fn)
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+    def account(self):
+        a = self.inner.account()
+        a["status"] = "ACTIVE"
+        return a
+
+
+class PaperDeps(FakeDeps):
+    def __init__(self, hub, cash_by_book):
+        super().__init__(hub)
+        self.env = {f"ALPACA_{e}_{s}": "x" for e in ("WC", "ARCADE", "CRYPTO") for s in ("KEY_ID", "SECRET")}
+        self._b = {b: PaperishBroker(c, lambda sym, h=hub: {**h.sl, **h.cl}.get(sym)) for b, c in cash_by_book.items()}
+
+    def paper_broker(self, book_id):
+        return self._b[book_id]
+
+
+def test_capital_cap_uses_only_2000_of_a_100k_paper_account(tmp_path):
+    hub = market(date(2026, 10, 2))
+    deps = PaperDeps(hub, {"arcade_crypto": 100_000.0})
+    now = datetime(2026, 10, 3, 15, 23, tzinfo=timezone.utc)
+    r = Runner("crypto", now, deps, state_dir=tmp_path, modes={"war_chest": "dry-run", "arcade_stocks": "dry-run",
+                                                               "arcade_crypto": "paper"}).execute()
+    assert r["status"] == "ok", r
+    assert any("untouched reserve" in n for n in r["notes"])
+    led = read_json(tmp_path / "ledger_arcade_crypto.json")
+    assert led["reserve_cash"] == 98_000.0
+    acc = read_json(tmp_path / "accounts.json")["books"]["arcade_crypto"]
+    assert acc["paper_equity"] == pytest.approx(2000.0, abs=1.0)        # the reserve never shows up
+    r2 = Runner("crypto", datetime(2026, 10, 3, 16, 23, tzinfo=timezone.utc), deps, state_dir=tmp_path,
+                modes={"war_chest": "dry-run", "arcade_stocks": "dry-run", "arcade_crypto": "paper"}).execute()
+    assert r2["status"] == "ok" and not r2["errors"]                     # reconciles with the reserve
+
+
+def test_rehearsal_and_check_do_not_touch_real_state(tmp_path):
+    from sim.run import run_rehearsal, run_check
+    hub = market(date(2026, 10, 2))
+    deps = PaperDeps(hub, {"war_chest": 2000.0, "arcade_stocks": 6000.0, "arcade_crypto": 100_000.0})
+    reh = tmp_path / "rehearsal"
+    r = run_rehearsal(datetime(2026, 9, 30, 3, 0, tzinfo=timezone.utc), deps, state_dir=reh)
+    assert r["status"] == "ok", r
+    bots = sorted(t["bot"] for t in read_json(reh / "trades.json")["trades"])
+    assert bots == ["A2", "A4", "B0"]                                    # windows and start dates ignored
+    assert not (tmp_path / "ledger_war_chest.json").exists()
+    c = run_check(datetime(2026, 9, 30, 3, 0, tzinfo=timezone.utc), deps, state_dir=tmp_path)
+    assert c["status"] == "ok", c
+    assert sum("ready" in n for n in c["notes"]) == 3

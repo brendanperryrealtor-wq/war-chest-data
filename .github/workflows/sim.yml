@@ -18,9 +18,9 @@ on:
       job:
         description: "Job to run"
         required: true
-        default: snapshot
+        default: check
         type: choice
-        options: [snapshot, morning, preclose, crypto, eod]
+        options: [check, rehearsal, snapshot, morning, preclose, crypto, eod]
 
 concurrency:
   group: war-chest-writer          # shared with the data job so pushes never collide

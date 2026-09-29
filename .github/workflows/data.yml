@@ -1,11 +1,16 @@
 name: war-chest-data
-# Nightly EOD data fetch for the War Chest Protocol.
+# Nightly EOD fetch for the War Chest Protocol.
 # Runs after each US trading day plus a manual "Run workflow" button.
+# Shares a concurrency group with the paper sim so two jobs never push at once.
 
 on:
   schedule:
     - cron: "30 2 * * 2-6" # 02:30 UTC Tue-Sat = evenings after US close Mon-Fri
   workflow_dispatch: {}
+
+concurrency:
+  group: war-chest-writer
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -31,5 +36,7 @@ jobs:
           git config user.name "war-chest-bot"
           git config user.email "actions@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -m "EOD data $(date -u +%F)"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "EOD data $(date -u +%F)"
+          for i in 1 2 3; do git pull --rebase --autostash && git push && exit 0; sleep 7; done
+          echo "push failed after 3 tries"; exit 1

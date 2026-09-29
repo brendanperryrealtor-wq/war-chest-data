@@ -1,0 +1,83 @@
+name: war-chest-sim
+# War Chest paper sim (claude/paper-sim-blueprint.md). Paper and dry-run only; live trading
+# does not exist in this code (Accord A9). Does nothing until the Alpaca paper keys are added
+# as repository secrets. Cron is UTC; each job checks its own Pacific-time window, so the
+# PDT/PST pairs below are intentional and a duplicate firing is a harmless no-op.
+
+on:
+  schedule:
+    - cron: "47 13,14 * * 1-5"     # morning: Congress copycat (about 6:47am PT)
+    - cron: "13 19,20 * * 1-5"     # pre-close: B0, A1 exits, A2, A3 (about 12:13pm PT)
+    - cron: "23 * * * *"           # crypto, hourly, every day
+    - cron: "37 13-21 * * 1-5"     # hourly snapshots in market hours
+  workflow_run:
+    workflows: ["war-chest-data"]  # after the nightly data job: end-of-day + Tournament
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Job to run"
+        required: true
+        default: snapshot
+        type: choice
+        options: [snapshot, morning, preclose, crypto, eod]
+
+concurrency:
+  group: war-chest-writer          # shared with the data job so pushes never collide
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check that paper keys exist
+        id: keys
+        env:
+          K1: ${{ secrets.ALPACA_WC_KEY_ID }}
+          K2: ${{ secrets.ALPACA_ARCADE_KEY_ID }}
+          K3: ${{ secrets.ALPACA_CRYPTO_KEY_ID }}
+        run: |
+          if [ -n "$K1$K2$K3" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else
+            echo "ok=false" >> "$GITHUB_OUTPUT"; echo "No Alpaca paper keys yet; nothing to do."; fi
+
+      - uses: actions/checkout@v4
+        if: steps.keys.outputs.ok == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.keys.outputs.ok == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        if: steps.keys.outputs.ok == 'true'
+        run: pip install --quiet -r sim/requirements.txt
+
+      - name: Run the sim
+        if: steps.keys.outputs.ok == 'true'
+        env:
+          ALPACA_WC_KEY_ID: ${{ secrets.ALPACA_WC_KEY_ID }}
+          ALPACA_WC_SECRET: ${{ secrets.ALPACA_WC_SECRET }}
+          ALPACA_ARCADE_KEY_ID: ${{ secrets.ALPACA_ARCADE_KEY_ID }}
+          ALPACA_ARCADE_SECRET: ${{ secrets.ALPACA_ARCADE_SECRET }}
+          ALPACA_CRYPTO_KEY_ID: ${{ secrets.ALPACA_CRYPTO_KEY_ID }}
+          ALPACA_CRYPTO_SECRET: ${{ secrets.ALPACA_CRYPTO_SECRET }}
+          CONGRESS_API_KEY: ${{ secrets.CONGRESS_API_KEY }}
+          SCHEDULE: ${{ github.event.schedule }}
+          EVENT: ${{ github.event_name }}
+          JOB_INPUT: ${{ github.event.inputs.job }}
+        run: python -m sim.run --auto
+
+      - name: Commit state
+        if: steps.keys.outputs.ok == 'true' && env.SIM_COMMIT == 'yes'
+        run: |
+          git config user.name "war-chest-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add state/sim sim/universe
+          git diff --cached --quiet && exit 0
+          git commit -m "sim: ${SIM_JOB} $(date -u +%FT%TZ)"
+          for i in 1 2 3; do git pull --rebase --autostash && git push && exit 0; sleep 7; done
+          echo "push failed after 3 tries"; exit 1

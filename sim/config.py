@@ -51,6 +51,9 @@ BOOKS = {
     "arcade_crypto": {
         "label": "Arcade Crypto", "lane": "arcade", "env": "CRYPTO", "asset_class": "crypto",
         "start_cash": 2000.00, "start_date": CRYPTO_START, "bots": ["A4"],
+        # Alpaca would not delete its original $100,000 paper account, so this book lives there
+        # and manages only its $2,000; the rest is an untouched reserve, excluded from every number.
+        "capital_cap": True,
     },
 }
 

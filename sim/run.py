@@ -5,13 +5,16 @@
     python -m sim.run --job snapshot --now 2026-10-05T19:15:00Z --force   # testing
 
 Jobs: morning (A1), preclose (B0, A1 exits, A2, A3), crypto (A4, hourly), snapshot
-(marks only), eod (after the nightly data job: history, shadow dividends, Tournament).
+(marks only), eod (after the nightly data job: history, shadow dividends, Tournament),
+check (verify every key, account, and data feed; no trading), rehearsal (every bot decides on
+live data with simulated fills in state/sim/rehearsal/, ignoring windows and start dates).
 Every failure is contained to its book and written to state/sim/health.json (fail closed).
 """
 from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
 import traceback
 from datetime import date, datetime, timedelta, timezone
@@ -114,14 +117,16 @@ class Deps:
 
 class Runner:
     def __init__(self, job: str, now_utc: datetime | None = None, deps: Deps | None = None,
-                 force: bool = False, state_dir: Path = STATE_DIR):
+                 force: bool = False, state_dir: Path = STATE_DIR, modes: dict | None = None,
+                 assume_open: bool = False):
         self.job = job
         self.now = now_utc or utcnow()
         self.today = market_date(self.now)
         self.deps = deps or Deps()
         self.force = force
         self.state_dir = Path(state_dir)
-        self.modes = load_modes()
+        self.modes = modes or load_modes()
+        self.assume_open = assume_open      # rehearsal only: pretend the market is open
         self.hub = self.deps.hub(self.now, self.today)
         self.run = {"job": job, "started": iso(self.now), "finished": None, "status": "ok",
                     "notes": [], "errors": [], "book_errors": {}}
@@ -155,8 +160,9 @@ class Runner:
 
         def price_fn(symbol):
             return self.latest_for(book_id, [symbol]).get(symbol)
-        return DryRunBroker(acct, price_fn, clock_fn=self.deps.clock_fn(book_id, self.now),
-                            asset_fn=self.deps.asset_fn(book_id))
+        clock = ((lambda: {"is_open": True, "timestamp": iso(self.now), "next_open": None,
+                           "next_close": None}) if self.assume_open else self.deps.clock_fn(book_id, self.now))
+        return DryRunBroker(acct, price_fn, clock_fn=clock, asset_fn=self.deps.asset_fn(book_id))
 
     # ---------- main ----------
     def execute(self) -> dict:
@@ -211,7 +217,15 @@ class Runner:
             broker = self.make_broker(book_id, mode, L)
             if mode == "paper":
                 acct, pos = broker.account(), broker.positions()
-                if pos or abs(acct["equity"] - cfg["start_cash"]) > 0.01 * cfg["start_cash"]:
+                if cfg.get("capital_cap"):
+                    if pos or acct["cash"] < cfg["start_cash"]:
+                        raise SetupError(
+                            f"{cfg['label']}: needs at least ${cfg['start_cash']:,.0f} cash and no positions before "
+                            f"the first run (found cash ${acct['cash']:,.2f}, {len(pos)} positions)")
+                    L.d["reserve_cash"] = round(acct["cash"] - cfg["start_cash"], 2)
+                    self.note(f"{cfg['label']}: manages ${cfg['start_cash']:,.0f}; "
+                              f"${L.d['reserve_cash']:,.2f} of the paper account is an untouched reserve")
+                elif pos or abs(acct["equity"] - cfg["start_cash"]) > 0.01 * cfg["start_cash"]:
                     raise SetupError(
                         f"{cfg['label']}: reset this Alpaca paper account to ${cfg['start_cash']:,.0f} with no "
                         f"positions before the first run (found equity ${acct['equity']:,.2f}, {len(pos)} positions)")
@@ -244,13 +258,13 @@ class Runner:
         if acct.get("trading_blocked") or acct.get("account_blocked"):
             raise SetupError(f"{cfg['label']}: broker reports the account is blocked")
         tol = 0.005 if cfg["asset_class"] == "crypto" else 1e-4
-        errors, notes = L.reconcile(bpos, acct["cash"], rel_tol_single=tol)
+        errors, notes = L.reconcile(bpos, acct["cash"] - L.d.get("reserve_cash", 0.0), rel_tol_single=tol)
         for n in notes:
             self.note(f"{book_id}: {n}")
         if errors:
             raise SetupError("; ".join(errors))
         unattributed = L.d.get("unattributed_cash", 0.0)
-        eq_book = acct["equity"] or cfg["start_cash"]
+        eq_book = (acct["equity"] - L.d.get("reserve_cash", 0.0)) or cfg["start_cash"]
         if abs(unattributed) > max(1.0, 0.01 * eq_book):
             raise SetupError(f"{cfg['label']}: ${unattributed:,.2f} of cash is unexplained by the sleeves")
 
@@ -371,9 +385,70 @@ class Runner:
             self.run["errors"].append(f"tournament: {type(e).__name__}: {e}")
 
 
+def run_check(now_utc: datetime | None = None, deps: Deps | None = None,
+              state_dir: Path = STATE_DIR) -> dict:
+    """Verify each book's keys and paper account, plus every data feed. Never trades."""
+    deps = deps or Deps()
+    now = now_utc or utcnow()
+    run = {"job": "check", "started": iso(now), "finished": None, "status": "ok",
+           "notes": [], "errors": [], "book_errors": {}}
+    modes = load_modes()
+    for book_id, cfg in BOOKS.items():
+        k, s = deps.keys(book_id)
+        if not (k and s):
+            run["errors"].append(f"{cfg['label']}: no keys in repo secrets")
+            continue
+        try:
+            b = deps.paper_broker(book_id)
+            a, pos, clk = b.account(), b.positions(), b.clock()
+            want = cfg["start_cash"]
+            ok = (a["cash"] >= want) if cfg.get("capital_cap") else abs(a["equity"] - want) <= 0.01 * want
+            run["notes"].append(
+                f"{cfg['label']}: key OK, paper cash ${a['cash']:,.2f}, equity ${a['equity']:,.2f}, "
+                f"{len(pos)} positions, market {'open' if clk['is_open'] else 'closed'}; "
+                f"{'ready' if ok and not pos else 'NOT READY'} for a ${want:,.0f} "
+                f"{'capped ' if cfg.get('capital_cap') else ''}book (mode {modes[book_id]})")
+            if not ok or pos:
+                run["errors"].append(f"{cfg['label']}: account does not match its ${want:,.0f} setup")
+        except Exception as e:
+            run["errors"].append(f"{cfg['label']}: {type(e).__name__}: {str(e)[:200]}")
+    hub = deps.hub(now, market_date(now))
+    for label, fn in (("stock quotes (IEX)", lambda: hub.stock_latest(["SPY", "QQQ"])),
+                      ("crypto quotes", lambda: hub.crypto_latest(["BTC/USD", "ETH/USD"])),
+                      ("congress feed", lambda: {"trades": len(hub.congress(market_date(now) - timedelta(days=7)))}),
+                      ("S&P 500 list", lambda: {"members": len(hub.sp500())})):
+        try:
+            run["notes"].append(f"{label}: OK {fn()}")
+        except Exception as e:
+            run["errors"].append(f"{label}: {type(e).__name__}: {str(e)[:200]}")
+    run["status"] = "error" if run["errors"] else "ok"
+    run["finished"] = iso(utcnow())
+    state_mod.record_run(run, modes, kill_switch_on(), state_dir)
+    return run
+
+
+def run_rehearsal(now_utc: datetime | None = None, deps: Deps | None = None,
+                  state_dir: Path = STATE_DIR / "rehearsal") -> dict:
+    """What would every bot do right now? Live data, simulated fills, separate state folder."""
+    state_dir = Path(state_dir)
+    shutil.rmtree(state_dir, ignore_errors=True)
+    state_dir.mkdir(parents=True, exist_ok=True)
+    now = now_utc or utcnow()
+    modes = {b: "dry-run" for b in BOOKS}
+    merged = {"job": "rehearsal", "started": iso(now), "finished": None, "status": "ok",
+              "notes": [], "errors": [], "book_errors": {}}
+    for job in ("morning", "preclose", "crypto"):
+        r = Runner(job, now, deps, force=True, state_dir=state_dir, modes=modes, assume_open=True).execute()
+        merged["notes"] += [f"[{job}] {n}" for n in r["notes"]]
+        merged["errors"] += [f"[{job}] {e}" for e in r["errors"]]
+    merged["status"] = "error" if merged["errors"] else "ok"
+    merged["finished"] = iso(utcnow())
+    return merged
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--job", choices=list(JOB_BOOKS))
+    ap.add_argument("--job", choices=list(JOB_BOOKS) + ["check", "rehearsal"])
     ap.add_argument("--auto", action="store_true")
     ap.add_argument("--now")
     ap.add_argument("--force", action="store_true")
@@ -382,14 +457,20 @@ def main(argv=None) -> int:
         ap.error("--job or --auto required")
     job = resolve_job(args)
     now = datetime.fromisoformat(args.now.replace("Z", "+00:00")) if args.now else None
-    runner = Runner(job, now_utc=now, force=args.force)
-    run = runner.execute()
+    runner = None
+    if job == "check":
+        run = run_check(now)
+    elif job == "rehearsal":
+        run = run_rehearsal(now)
+    else:
+        runner = Runner(job, now_utc=now, force=args.force)
+        run = runner.execute()
     print(f"[{run['status']}] {job} started {run['started']} finished {run['finished']}")
     for n in run["notes"]:
         print("  -", n)
     for e in run["errors"]:
         print("  ERROR", e)
-    commit = run["status"] != "skipped" and (job != "crypto" or runner.changed or bool(run["errors"]))
+    commit = run["status"] != "skipped" and (job != "crypto" or (runner and runner.changed) or bool(run["errors"]))
     with Path(os.environ.get("GITHUB_ENV", "/dev/null")).open("a") as f:
         f.write(f"SIM_JOB={job}\nSIM_COMMIT={'yes' if commit else 'no'}\n")
     return 0          # errors are recorded in health.json; the workflow still commits state
